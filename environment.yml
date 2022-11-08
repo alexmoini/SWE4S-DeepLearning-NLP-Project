@@ -1,0 +1,20 @@
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - pytorch_lightning
+  - torch
+  - transformers
+  - CosineEmbeddingLoss
+  - cosine_similarity
+  - pandas
+  - torch
+  - torch.nn.functional
+  - Dataset
+  - DataLoader
+  - pandas as pd
+  - AutoTokenizer
+  - numpy as np
+  - time
+  - unittest
