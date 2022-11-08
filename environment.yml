@@ -13,8 +13,10 @@ dependencies:
   - torch.nn.functional
   - Dataset
   - DataLoader
-  - pandas as pd
+  - pandas
   - AutoTokenizer
-  - numpy as np
+  - numpy
   - time
   - unittest
+  - python
+  - pycodestyle
