@@ -3,24 +3,25 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pytorch_lightning
   - torch
   - transformers
-  - custom_losses
   - pandas
-  - torch
   - datasets
   - pandas
   - numpy
   - time
-  - unittest
   - python
   - pycodestyle
-  - data_utils
-  - os
-  - logging
   - argparse
-  - backbone_tuners
   - nltk
   - boto3
-  - embedding_backbone
+  - pip:
+    - pytorch_lightning
+    - custom_losses
+    - torch
+    - unittest
+    - data_utils
+    - os
+    - logging
+    - backbone_tuners
+    - embedding_backbone
