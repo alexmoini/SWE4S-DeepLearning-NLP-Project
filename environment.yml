@@ -18,7 +18,6 @@ dependencies:
   - pip:
     - pytorch_lightning
     - custom_losses
-    - torch
     - unittest
     - data_utils
     - os
