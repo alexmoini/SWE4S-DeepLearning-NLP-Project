@@ -6,13 +6,12 @@ dependencies:
   - pytorch_lightning
   - torch
   - transformers
-  - CosineEmbeddingLoss
-  - cosine_similarity
+  - custom_losses
   - pandas
   - torch
-  - torch.nn.functional
-  - Dataset
-  - DataLoader
+  - dataset
+  - datasets
+  - dataLoader
   - pandas
   - AutoTokenizer
   - numpy
@@ -20,3 +19,11 @@ dependencies:
   - unittest
   - python
   - pycodestyle
+  - data_utils
+  - os
+  - logging
+  - argparse
+  - backbone_tuners
+  - nltk
+  - boto3
+  - embedding_backbone
