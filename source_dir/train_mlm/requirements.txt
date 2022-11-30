@@ -1,6 +1,0 @@
-transformers
-torch
-pytorch-lightning
-scipy
-pandas
-numpy
