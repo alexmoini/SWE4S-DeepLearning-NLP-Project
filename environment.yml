@@ -1,0 +1,25 @@
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - transformers
+  - pandas
+  - datasets
+  - pandas
+  - numpy
+  - time
+  - python
+  - pycodestyle
+  - argparse
+  - nltk
+  - boto3
+  - pip:
+    - pytorch_lightning
+    - custom_losses
+    - unittest
+    - data_utils
+    - os
+    - logging
+    - backbone_tuners
+    - embedding_backbone
