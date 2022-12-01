@@ -4,7 +4,7 @@ import transformers
 import pandas as pd
 import torchmetrics as tm
 from transformers.utils import logging
-from rouge_score import rouge_scorer
+from torchmetrics.text.rouge import ROUGEScore
 
 logging.set_verbosity_info()
 logger = logging.get_logger("transformers")
@@ -13,24 +13,24 @@ class SummarizationModel(pl.LightningModule):
     """
 
     """
-    def __init__(self, model_architecture, checkpoint_dir, learning_rate=1e-4, loss=torch.nn.CrossEntropyLoss()):
+    def __init__(self, model_architecture, checkpoint_dir=None, learning_rate=1e-4, loss=torch.nn.CrossEntropyLoss()):
         """
 
         """
         super().__init__()
         self.model = transformers.AutoModelForSeq2SeqLM.from_pretrained(model_architecture)
         if checkpoint_dir is not None:
-            self.model.load_state_dict(torch.load(checkpoint_dir).state_dict(), strict=False)
+            self.model.load_state_dict(torch.load(checkpoint_dir), strict=False)
         self.learning_rate = learning_rate
         self.loss = loss
-        self.rouge = tm.Rouge()
+        self.rouge = ROUGEScore()
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_architecture)
 
     def forward(self, input_ids, attention_masks, labels):
         """
         Forward pass of the model
         """
-        return self.model(input_ids, attention_mask=attention_masks, labels=labels)
+        return self.model(input_ids, attention_masks, labels=labels)
 
     def training_step(self, batch, batch_idx):
         """
@@ -39,11 +39,12 @@ class SummarizationModel(pl.LightningModule):
         torch.cuda.empty_cache()
         self.model.train()
         encoding = batch
-        model_output = self(**encoding)
+        model_output = self(encoding['input_ids'], encoding['attention_mask'], encoding['labels'])
         loss = model_output.loss
-        preds_labels  = [model_output[0], encoding['labels']]
-        tokens = self.tokenizer.batch_decode(preds_labels, skip_special_tokens=True)
-        scores = self.rouge(tokens[0], tokens[1])
+        output_tokens = model_output.logits.argmax(dim=2)
+        output_text = self.tokenizer.batch_decode(output_tokens, skip_special_tokens=True)
+        labels_text = self.tokenizer.batch_decode(encoding['labels'], skip_special_tokens=True)
+        scores = self.rouge(output_text, labels_text)
         self.log("train_loss", loss)
         self.log("train_rouge1", scores['rouge1_fmeasure'])
         self.log("train_rouge2", scores['rouge2_fmeasure'])
@@ -58,11 +59,12 @@ class SummarizationModel(pl.LightningModule):
         self.model.eval()
         encoding = batch
         with torch.no_grad():
-            model_output = self(**encoding)
+            model_output = self(encoding['input_ids'], encoding['attention_mask'], encoding['labels'])
         loss = model_output.loss
-        preds_labels  = [model_output[0], encoding['labels']]
-        tokens = self.tokenizer.batch_decode(preds_labels, skip_special_tokens=True)
-        scores = self.rouge(tokens[0], tokens[1])
+        output_tokens = model_output.logits.argmax(dim=2)
+        output_text = self.tokenizer.batch_decode(output_tokens, skip_special_tokens=True)
+        labels_text = self.tokenizer.batch_decode(encoding['labels'], skip_special_tokens=True)
+        scores = self.rouge(output_text, labels_text)
         self.log("train_loss", loss)
         self.log("train_rouge1", scores['rouge1_fmeasure'])
         self.log("train_rouge2", scores['rouge2_fmeasure'])

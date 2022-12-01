@@ -11,7 +11,7 @@ class TestSummarizationDataModule(unittest.TestCase):
         """
         self.tokenizer = transformers.AutoTokenizer.from_pretrained('facebook/bart-large-cnn')
         self.max_length = 1024
-        self.dataset_path = 'summarization_test_data/5_rows'
+        self.dataset_path = 'summarization_test_data/unittest_data'
         self.split = ''
         self.data = SummarizationDataModule(self.dataset_path, self.tokenizer, self.max_length, self.split)
     def test_getitem(self):
@@ -36,7 +36,7 @@ class TestSummarizationModel(unittest.TestCase):
         """
         self.tokenizer = transformers.AutoTokenizer.from_pretrained('facebook/bart-large-cnn')
         self.max_length = 1024
-        self.dataset_path = 'summarization_test_data/5_rows'
+        self.dataset_path = 'summarization_test_data/unittest_data'
         self.data = SummarizationDataModule(self.dataset_path, self.tokenizer, self.max_length, '')
         self.model = SummarizationModel('facebook/bart-large-cnn')
     def test_forward(self):
