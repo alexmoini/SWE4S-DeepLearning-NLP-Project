@@ -15,9 +15,9 @@ class CorpusMaskingDataset(Dataset):
         Tokenizer is the tokenizer to use to tokenize the corpus
         """
         if pre_masked:
-            self.data = pd.read_csv(path, delimiter='\n', encoding='utf-8', engine='python')
+            self.data = pd.read_csv(path, delimiter='\n')
         else:
-            self.data = pd.read_csv(path, header=None, delimiter='\n', encoding='utf-8', engine='python')
+            self.data = pd.read_csv(path, header=None, delimiter='\r\n', encoding='utf-8')
         self.tokenizer = tokenizer
         self.mask_prob = mask_prob
         self.pre_masked = pre_masked

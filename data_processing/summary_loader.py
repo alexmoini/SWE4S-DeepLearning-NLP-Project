@@ -4,6 +4,7 @@ import boto3
 import time
 import argparse
 import nltk
+import pandas as pd
 nltk.download('punkt')
 
 def get_args():
@@ -12,6 +13,7 @@ def get_args():
     parser.add_argument('--output_dir', type=str, default='s3://deeplearning-nlp-bucket/summary_patent_data/')
     parser.add_argument('--dataset_name', type=str, default='big_patent')
     parser.add_argument('--dataset_config_name', type=str, default='d')
+    parser.add_argument('--test_data', type=bool, default=False)
     args = parser.parse_args()
     return args
 
@@ -21,9 +23,18 @@ def load_and_split(args):
     dataset = datasets.load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
     end = time.time()
     print("Loaded dataset in {} seconds".format(end-start))
+    dataset = dataset.to_pandas()
+    if args.test_data:
+        dataset = dataset[:5]
+        args.split = 'unittest_data'
     # upload dataset as csv
-    s3 = datasets.filesystems.S3FileSystem(anon=True)
-    dataset.save_to_disk(args.output_dir+args.split, fs=s3)
+    if args.output_dir.startswith('s3://'):
+        s3 = boto3.client('s3')
+        bucket, key = args.output_dir[5:].split('/', 1)
+        s3.put_object(Bucket=bucket, Key=key+args.split, Body=dataset.to_csv())
+    else:
+        dataset.to_csv(args.output_dir+args.split)
+
 if __name__ == '__main__':
     args = get_args()
     load_and_split(args)

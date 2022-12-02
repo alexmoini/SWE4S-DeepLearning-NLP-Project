@@ -2,7 +2,7 @@ import sys
 import io
 from smart_open import open as smart_open
 from mlm_tuner import MaskedLanguageModelingModel
-from text_backbone import TextEmbeddingBackbone
+from embedding_backbone import TextEmbeddingBackbone
 from mlm_utils import CorpusMaskingDataset
 import argparse
 import random
@@ -15,23 +15,22 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
 import transformers
 from transformers.utils import logging
-
-logging.set_verbosity_info()
-logger = logging.get_logger("transformers")
+from dagshub.pytorch_lightning import DAGsHubLogger
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-architecture", type=str, default="bert-base-uncased")
     parser.add_argument("--model-dir", type=str, default=None)#os.environ.get("SM_MODEL_DIR")
-    parser.add_argument("--train", type=str, default=os.environ.get("SM_CHANNEL_TRAIN"))
-    parser.add_argument("--eval", type=str, default=os.environ.get("SM_CHANNEL_EVAL"))
-    parser.add_argument("--output-dir", type=str, default='/opt/ml/model')
-    parser.add_argument("--logs-dir", type=str, default='/opt/ml/output/logs')
+    parser.add_argument("--train", type=str, default='s3://deeplearning-nlp-bucket/corpus-patent-data/train')
+    parser.add_argument("--eval", type=str, default='s3://deeplearning-nlp-bucket/corpus-patent-data/validation')
+    parser.add_argument("--output-dir", type=str, default='models/bart-large/')
+    parser.add_argument("--logs-dir", type=str, default='logs/bart-large/')
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--num-epochs", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--num-workers", type=int, default=4)
-    parser.add_argument("--gpus", type=int, default=0)
+    parser.add_argument("--gpus", type=int, default=1)
+    parser.add_argument("--hardware", type=str, default="mps")
     parser.add_argument("--max-seq-length", type=int, default=128)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--masked-lm-prob", type=float, default=0.15)
@@ -52,8 +51,8 @@ def load_mlm_model(embedding_backbone):
     mlm_model = MaskedLanguageModelingModel(embedding_backbone)
     return mlm_model
 
-def directory_to_path(directory):
-    path = os.path.join(directory, os.listdir(directory)[0])
+def directory_to_path(directory, file_name):
+    path = os.path.join(directory, file_name)
     return path
 
 def main():
@@ -63,8 +62,8 @@ def main():
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.model_architecture)
     embedding_backbone = load_embedding_backbone(args.model_architecture, args.model_dir)
     mlm_model = load_mlm_model(embedding_backbone)
-    train_path = directory_to_path(args.train)
-    valid_path = directory_to_path(args.eval)
+    train_path = directory_to_path(args.train, 'train.csv')
+    valid_path = directory_to_path(args.eval, 'validation.csv')
     train_dataset = load_dataset(train_path, tokenizer, pre_masked=args.pre_masked, sequence_length=args.max_seq_length)
     val_dataset = load_dataset(valid_path, tokenizer, pre_masked=args.pre_masked, sequence_length=args.max_seq_length)
     args.batch_size = args.batch_size * max(1, args.gpus)
@@ -85,12 +84,21 @@ def main():
     version_ = args.model_architecture + '-' + str(args.learning_rate) + '-' + str(args.batch_size) + '-' + train_csv + '-' + str(rand)
     lr_monitor = LearningRateMonitor(logging_interval='step')
 
+    if args.hardware == 'mps':
+        trainer = pl.Trainer(devices=args.gpus,
+                             accelerator='mps',
+                             max_epochs=args.num_epochs,
+                             logger=DAGsHubLogger(metrics_path=args.logs_dir+'metrics.csv', hparams_path=args.logs_dir+'hparams.csv'),
+                             callbacks=[checkpoint_callback,
+                                        earlystop_callback,
+                                        lr_monitor]
+                            )
     if args.gpus > 1:
         trainer = pl.Trainer(devices=args.gpus, 
                              accelerator='gpu',
                              strategy='ddp',
                              max_epochs=args.num_epochs,
-                             logger=pl.loggers.TensorBoardLogger(args.logs_dir, version=version_),
+                             logger=DAGsHubLogger(metrics_path=args.logs_dir+'metrics.csv', hparams_path=args.logs_dir+'hparams.csv'),
                              callbacks=[checkpoint_callback, 
                                         earlystop_callback,
                                         lr_monitor]
@@ -101,7 +109,7 @@ def main():
         trainer = pl.Trainer(devices=args.gpus,
                              accelerator='gpu',
                              max_epochs=args.num_epochs,
-                             logger=pl.loggers.TensorBoardLogger(args.logs_dir, version=version_),
+                             logger=DAGsHubLogger(metrics_path=args.logs_dir+'metrics.csv', hparams_path=args.logs_dir+'hparams.csv'),
                              callbacks=[checkpoint_callback,
                                         earlystop_callback,
                                         lr_monitor]
@@ -109,7 +117,6 @@ def main():
 
     trainer.fit(mlm_model, train_dataloader, val_dataloader)
     best_model_path = checkpoint_callback.best_model_path
-    logger.info(f"Best model path:{best_model_path}")
     with smart_open(best_model_path, 'rb') as f:
         buffer = io.BytesIO(f.read())
     embedding_backbone = load_embedding_backbone(args.model_architecture, buffer) # buffer -> checkpoint_dir

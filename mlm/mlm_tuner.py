@@ -4,9 +4,8 @@ import transformers
 import pandas as pd
 import torchmetrics as tm
 from transformers.utils import logging
+import logging
 
-logging.set_verbosity_info()
-logger = logging.get_logger("transformers")
 
 class MaskedLanguageModelingModel(pl.LightningModule):
     """
@@ -49,8 +48,6 @@ class MaskedLanguageModelingModel(pl.LightningModule):
         model_output = self(masked_sequence['input_ids'], masked_sequence['attention_mask'])
         loss = self.loss(model_output.view(-1, self.model.config.vocab_size), groundtruth_sequence['input_ids'].view(-1))
         acc = self.accuracy(model_output.view(-1, self.model.config.vocab_size), groundtruth_sequence['input_ids'].view(-1))
-        logger.info(f"train_loss:{loss}")
-        logger.info(f"train_acc:{acc}")
         self.log("train_loss", loss)
         self.log("train_acc", acc)
         # Load to cloudwatch for hyperparameter tuning (monitoring train loss)
@@ -66,8 +63,6 @@ class MaskedLanguageModelingModel(pl.LightningModule):
             model_output = self(masked_sequence['input_ids'], masked_sequence['attention_mask'])
         loss = self.loss(model_output.view(-1, self.model.config.vocab_size), groundtruth_sequence['input_ids'].view(-1))
         acc = self.accuracy(model_output.view(-1, self.model.config.vocab_size), groundtruth_sequence['input_ids'].view(-1))
-        logger.info(f"val_loss:{loss}")
-        logger.info(f"val_acc:{acc}")
         self.log("val_loss", loss)
         self.log("val_acc", acc)
         # Load to cloudwatch for hyperparameter tuning (monitoring val loss)
