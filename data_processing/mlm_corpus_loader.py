@@ -18,14 +18,14 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def load_and_split(args):
+def load_and_split(split):
     print("Loading dataset")
     start = time.time()
-    dataset = datasets.load_dataset(args.dataset_name, args.dataset_config_name, split=args.split)
+    dataset = datasets.load_dataset('big_patent', 'd', split=split)
     end = time.time()
     print("Loaded dataset in {} seconds".format(end-start))
     mlm_set = []
-    for sample in dataset[args.text_column]:
+    for sample in dataset['description']:
         sentences = sent_tokenize(sample)
         for sentence in sentences:
             if len(sentence) > 50:
@@ -46,4 +46,4 @@ def load_and_split(args):
             f.write(mlm_set)
 if __name__ == '__main__':
     args = get_args()
-    load_and_split(args)
+    load_and_split(args['split'])

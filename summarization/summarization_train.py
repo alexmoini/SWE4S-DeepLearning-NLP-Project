@@ -11,6 +11,7 @@ import torch
 import logging
 import transformers
 from transformers.utils import logging
+from dagshub.pytorch_lightning import DAGsHubLogger
 
 logging.set_verbosity_info()
 logger = logging.get_logger("transformers")
@@ -74,7 +75,7 @@ def train(args):
         callbacks=[checkpoint_callback, lr_monitor],
         accelerator='gpu',
         precision=16,
-        logger=pl.loggers.TensorBoardLogger(args.logs_dir, name="lightning_logs"),
+        logger=DAGsHubLogger(metrics_path=args.logs_dir+'metrics.csv', hparams_pat=args.logs_dir+'hparams.csv'),
     )
     logger.info("Starting training")
     trainer.fit(model, train_dataloader, val_dataloader)
